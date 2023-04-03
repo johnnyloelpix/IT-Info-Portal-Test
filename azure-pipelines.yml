@@ -1,0 +1,37 @@
+
+trigger:
+- main
+
+stages:
+  - stage: 'GenerateHugo'
+    displayName: 'Generate hugo website'
+    jobs:
+      - job:
+        pool:
+          vmImage: ubuntu-latest
+        workspace:
+          clean: all
+        steps:
+        - checkout: self
+          displayName: 'Checkout repository including submodules'
+          submodules: true  # true so Hugo theme submodule is checked out
+        - script: wget https://github.com/gohugoio/hugo/releases/download/v0.83.1/hugo_0.83.1_Linux-64bit.deb -O '$(Pipeline.Workspace)/hugo_0.83.1_Linux-64bit.deb'
+          displayName: Download Hugo v0.83.1 Linux x64
+        # 2. Installs Hugo executable
+        - script: sudo dpkg -i $(Pipeline.Workspace)/hugo*.deb
+          displayName: Install Hugo
+        - task: AzureStaticWebApp@0
+          condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+          inputs:
+            app_location: '/'
+            app_build_command: 'hugo -D'
+            output_location: '/public'
+            azure_static_web_apps_api_token: '$(TOKEN)'
+        
+        - task: AzureStaticWebApp@0
+          condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+          inputs:
+            app_location: '/'
+            app_build_command: 'hugo -D'
+            output_location: '/public'
+            azure_static_web_apps_api_token: '$(STAGING_TOKEN)'
